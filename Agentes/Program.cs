@@ -11,137 +11,95 @@ namespace Agentes
         static void Main(string[] args)
         {
             //Initial Information
-            Console.WriteLine("3er Proyecto de Simulacion: Agentes\n");
-            
-            
-            var dirtyCellsA = new double[30];
-            var dirtyCellsB = new double[30];
-            var ciclesA = new int[30];
-            var ciclesB = new int[30];
-            int firedA = 0;
-            int firedB = 0;
-            int successA = 0;
-            int successB = 0;
-                        
-            for (int i = 0; i < 30; i++)
+            Console.WriteLine("3er Proyecto de Simulacion: Agentes");
+            Console.WriteLine("Simulacion de un Robot que se encarga de limpiar y cuidar un mapa, recogiendo " +
+                              "todos los niños que sueltos y ensuciando dentro del mapa para colocarlos dentro de un corral.\n");
+
+            while (true)
             {
+                Console.WriteLine("\n--- Datos Necesarios para la Simulacion ---");
+                Console.Write("Intruzca el ancho del mapa: ");
+                var m = int.Parse(Console.ReadLine());
+                Console.Write("El largo del mapa: ");
+                var n = int.Parse(Console.ReadLine());
+                Console.Write("La cantidad de niños en el mapa: ");
+                var kids = int.Parse(Console.ReadLine());
+                Console.Write("La porciento de casillas sucias en el mapa: ");
+                var dirty = double.Parse(Console.ReadLine());
+                Console.Write("El porciento de obstaculos en el mapa: ");
+                var obstacles = double.Parse(Console.ReadLine());
+                Console.Write("El tiempo de duracion del ciclo [milliseconds]: ");
+                var waiting = long.Parse(Console.ReadLine());
+                Console.Write("El Tipo de Agente que desea usar [A/B]: ");
+                var input = Console.ReadLine().ToLower();
+                RobotType agent;
+                if (input == "a" || input == "agenta" || input == "agent a") agent = RobotType.AgentA;
+                else if (input == "b" || input == "agentb" || input == "agent b") agent = RobotType.AgentA;
+                else
+                {
+                    Console.WriteLine("La informacion introducida es incorrecta, vuelva a intentarlo...\n");
+                    continue;
+                }
+
                 //Creating the Environment && Agent
-                var simulationA = new Environment(9, 9, 6, 20, 15, RobotType.AgentA, 0);
-                var simulationB = simulationA.CopyStartEnviroment(RobotType.AgentB);
+                var simulation = new Environment(m, n, kids, dirty, obstacles, agent, waiting);
 
-                //Console.WriteLine("*** Imprimiendo el Mapa: ***");
-                //foreach (var item in simulationA.Cells())
-                //{
-                //    Console.WriteLine(item);
-                //}
-                //Console.WriteLine();
+                Console.WriteLine("\n<<<< Mapa Inicial >>>>");
+                foreach (var item in simulation.Cells())
+                {
+                    Console.WriteLine(item);
+                }
+                Console.WriteLine();
 
                 //Doing the Simulation
-                Console.WriteLine("\nSimulation of AgentA:");
-                while (!simulationA.Done)
+                var finerun = true;
+                var message = "";
+                while (!simulation.Done && finerun)
                 {
-                    var reports = simulationA.Cicle();
-                    //Console.WriteLine("**************\nCicle: " + simulationA.Count + "\n**************");
-                    //foreach (var item in reports)
-                    //{
-                    //    Console.WriteLine(item);
-                    //}
-                    //Console.WriteLine("\n<<<< Updated Map >>>>");
-                    //foreach (var item in simulationA.Cells())
-                    //{
-                    //    Console.WriteLine(item);
-                    //}
-                    //Console.WriteLine();
-                    //Console.ReadLine();
+                    try
+                    {
+                        var reports = simulation.Cicle();
+                        Console.WriteLine("**************\nCiclo: " + simulation.Count + "\n**************");
+                        foreach (var item in reports)
+                        {
+                            Console.WriteLine(item);
+                        }
+                        Console.WriteLine("\n<<<< Mapa Actual >>>>");
+                        foreach (var item in simulation.Cells())
+                        {
+                            Console.WriteLine(item);
+                        }
+                        Console.WriteLine();
+                        //Console.ReadLine();
+                    }
+                    catch(Exception e)
+                    {
+                        finerun = false;
+                        message = e.Message;
+                    }
                 }
-
-                if (simulationA.Success)
+                if (!finerun)
                 {
-                    successA++;
-                    Console.WriteLine("The Robot was able to clean the house and put the Kid in the Corrals in {0} cicles", simulationA.Count);
+                    Console.WriteLine("El Robot fue despedido por funcionamiento defectuoso.");
+                    Console.WriteLine(message);
                 }
-                else if (simulationA.Fired)
+                else if (simulation.Success)
                 {
-                    firedA++;
-                    Console.WriteLine("The Robot was Fired");
+                    Console.WriteLine("El Robot ubico a los niños en el corral y limpio toda la casa en {0} ciclos.", simulation.Count);
+                }
+                else if (simulation.Fired)
+                {
+                    Console.WriteLine("El Robot fue despedido.");
                 }
                 else
                 {
-                    Console.WriteLine("The Robot didn't have enough time to finish his work.");
-                }
-                ciclesA[i] = simulationA.Count;
-                dirtyCellsA[i] = simulationA.PercentDirty();
-
-
-                //********** Simulation B ************
-                Console.WriteLine("\nSimulation of AgentB:");
-
-                //Console.WriteLine("*** Imprimiendo el Mapa: ***");
-                //foreach (var item in simulationB.Cells())
-                //{
-                //    Console.WriteLine(item);
-                //}
-                //Console.WriteLine();
-
-                //Doing the Simulation
-                while (!simulationB.Done)
-                {
-                    var reports = simulationB.Cicle();
-                    //Console.WriteLine("**************\nCicle: " + simulationB.Count + "\n**************");
-                    //foreach (var item in reports)
-                    //{
-                    //    Console.WriteLine(item);
-                    //}
-                    //Console.WriteLine("\n<<<< Updated Map >>>>");
-                    //foreach (var item in simulationB.Cells())
-                    //{
-                    //    Console.WriteLine(item);
-                    //}
-                    //Console.WriteLine();
-                    //Console.ReadLine();
+                    Console.WriteLine("El robot no tuvo suficiente tiempo para terminar.");
                 }
 
-                if (simulationB.Success)
-                {
-                    successB++;
-                    Console.WriteLine("The Robot was able to clean the house and put the Kid in the Corrals in {0} cicles", simulationB.Count);
-                }
-                else if (simulationB.Fired)
-                {
-                    firedB++;
-                    Console.WriteLine("The Robot was Fired");
-                }
-                else
-                {
-                    Console.WriteLine("The Robot didn't have enough time to finish his work.");
-                }
-
-                ciclesB[i] = simulationB.Count;
-                dirtyCellsB[i] = simulationB.PercentDirty();
+                Console.WriteLine("\n[q/quit] para salir");
+                input = Console.ReadLine().ToLower(); ;
+                if (input == "q" || input == "quit") break;
             }
-
-            var sumDirtyCellsA = dirtyCellsA.Aggregate((e1, e2) => e1 + e2);
-            var meanDirtyA = sumDirtyCellsA / 30;
-            var sumDirtyCellsB = dirtyCellsB.Aggregate((e1, e2) => e1 + e2);
-            var meanDirtyB = sumDirtyCellsB / 30;
-
-            var meanCiclesA = (double) ciclesA.Aggregate((e1, e2) => e1 + e2) / 30;
-            var meanCiclesB = (double) ciclesB.Aggregate((e1, e2) => e1 + e2) / 30;
-
-            Console.WriteLine("Estadisticas Agente A:");
-            Console.WriteLine("Success: {0}", successA);
-            Console.WriteLine("Fired: {0}", firedA);
-            Console.WriteLine("Promedio de Ciclos: {0}", meanCiclesA);
-            Console.WriteLine("Promedio de Casillas Sucias: {0}\n", meanDirtyA);
-
-            Console.WriteLine("Estadisticas Agente B:");
-            Console.WriteLine("Success: {0}", successB);
-            Console.WriteLine("Fired: {0}", firedB);
-            Console.WriteLine("Promedio de Ciclos: {0}", meanCiclesB);
-            Console.WriteLine("Promedio de Casillas Sucias: {0}", meanDirtyB);
-
-
-            Console.ReadLine();
         }
     }
 }
