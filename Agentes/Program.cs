@@ -14,7 +14,7 @@ namespace Agentes
             Console.WriteLine("3er Proyecto de Simulacion: Agentes\n");
 
             //Creating the Environment && Agent
-            var simulation = new Environment(4, 4, 2, 0, 11, RobotType.AgentA, 2000);
+            var simulation = new Environment(10, 10, 4, 15, 15, RobotType.AgentB, 0);
             Console.WriteLine("*** Imprimiendo el Mapa: ***");
             foreach (var item in simulation.Cells())
             {
@@ -44,7 +44,7 @@ namespace Agentes
             {
                 Console.WriteLine("The Robot was able to clean the house and put the Kid in the Corrals in {0} cicles", simulation.Count);
             }
-            else if(simulation.Fired)
+            else if (simulation.Fired)
             {
                 Console.WriteLine("The Robot was Fired");
             }
