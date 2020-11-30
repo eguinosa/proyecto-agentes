@@ -119,7 +119,7 @@ namespace Agentes
             env[agent.PosX, agent.PosY] = new Cell(agent);
         }
 
-        protected Environment(RobotType robot, Cell[,] enviroment)
+        protected Environment(RobotType robot, Cell[,] enviroment, long milliSeconds)
         {
 
             //Copying Data from one Enviroment to the Other
@@ -173,6 +173,8 @@ namespace Agentes
             Success = false;
             Fired = false;
             TotalKids = kids.Count;
+            waitMilliSeconds = milliSeconds;
+            stopwatch = new Stopwatch();
 
             //Creating Agent
             if (!foundAgent) throw new Exception("Can't Copy a Simulation without the Agent");
@@ -184,7 +186,7 @@ namespace Agentes
         public Environment CopyStartEnviroment(RobotType robot)
         {
             if (Count > 0) throw new Exception("Can't Copy an Enviroment that already has started");
-            var result = new Environment(robot, env);
+            var result = new Environment(robot, env, this.waitMilliSeconds);
             return result;
         }
 
@@ -218,13 +220,16 @@ namespace Agentes
                     break;
                 case RobotAction.Move_Leave:
                     //Moving
-                    report = "Moving: " + agent + " -> ";
-                    MoveRobot(nextPos);
-                    report += agent;
-                    reports.Add(report);
+                    if (nextPos.Length > 0)
+                    {
+                        report = "Moving: " + agent + " -> ";
+                        MoveRobot(nextPos);
+                        report += agent;
+                        reports.Add(report);
+                    }
                     //Leaving Kid
-                    if (env[agent.PosX, agent.PosY] == null) throw new Exception("This is an empty cell");
-                    if (!env[agent.PosX, agent.PosY].HasCorral) throw new Exception("There is no Corral to leave a Kid");
+                    if (env[agent.PosX, agent.PosY] == null) break;
+                    if (!env[agent.PosX, agent.PosY].HasCorral) break;
                     report = "--> Giving Kid: " + agent + " to " + env[agent.PosX, agent.PosY].Corral;
                     reports.Add(report);
                     var kid = agent.DepositKid(env);
@@ -245,7 +250,7 @@ namespace Agentes
                 var kid = kids[i];
 
                 //Neutralised Kids with Robots or inside a Corral
-                if (env[kid.PosX, kid.PosY] == null) throw new Exception("There are no Kids on this Cell");
+                if (env[kid.PosX, kid.PosY] == null) continue;
                 else if (env[kid.PosX, kid.PosY].HasRobot && env[kid.PosX, kid.PosY].Robot.HasKid)
                 {
                     reports.Add("Trapped: " + kid + " - in Robot");
@@ -256,7 +261,7 @@ namespace Agentes
                     reports.Add("Trapped: " + kid + " - in Corral");
                     continue;
                 }
-                else if (!env[kid.PosX, kid.PosY].HasKid) throw new Exception("There are no Kids on this Cell");
+                else if (!env[kid.PosX, kid.PosY].HasKid) continue;
 
                 var (kidAction, (x, y)) = kid.NextAction(env);
                 if (kidAction == KidAction.Stay)
@@ -370,33 +375,37 @@ namespace Agentes
         protected void MoveRobot((int x, int y)[] pos)
         {
             var (x, y) = pos[0];
-            if (Element.Distance(x, y, agent.PosX, agent.PosY) != 1) throw new Exception("The Robot Has to Move one Step at a time");
+            if (x == agent.PosX && y == agent.PosY) return;
+            if (Element.Distance(x, y, agent.PosX, agent.PosY) != 1) return;
 
             //Departure Cell
-            if (env[agent.PosX, agent.PosY] == null) throw new Exception("This is an empty cell");
+            if (env[agent.PosX, agent.PosY] == null) return;
+            if (!env[agent.PosX, agent.PosY].HasRobot) return;
             env[agent.PosX, agent.PosY].ExitRobot();
             if (env[agent.PosX, agent.PosY].Empty) env[agent.PosX, agent.PosY] = null;
 
             //Arrival Cell
             agent.Move(x, y);
             if (env[x, y] == null) env[x, y] = new Cell(agent);
+            if (env[x, y].HasObstacle || env[x, y].HasCorralWithKid) return;
             else env[x, y].Add(agent);
 
             if (pos.Length == 1) return;
 
             //*******  Second Step *******
             (x, y) = pos[1];
-            if (!agent.HasKid) throw new Exception("You need to have a Kid to move 2 steps");
-            if (Element.Distance(x, y, agent.PosX, agent.PosY) != 1) throw new Exception("The Robot Has to Move one Step at a time");
+            if (!agent.HasKid) return;
+            if (Element.Distance(x, y, agent.PosX, agent.PosY) != 1) return;
 
             //Departure Cell
-            if (env[agent.PosX, agent.PosY] == null) throw new Exception("This is an empty cell");
+            if (env[agent.PosX, agent.PosY] == null) return;
             env[agent.PosX, agent.PosY].ExitRobot();
             if (env[agent.PosX, agent.PosY].Empty) env[agent.PosX, agent.PosY] = null;
 
             //Arrival Cell
             agent.Move(x, y);
             if (env[x, y] == null) env[x, y] = new Cell(agent);
+            if (env[x, y].HasObstacle || env[x, y].HasCorralWithKid) return;
             else env[x, y].Add(agent);
         }
 

@@ -11,8 +11,7 @@ namespace Agentes
         public Kid Kid { get; protected set; }
         public bool HasKid => Kid != null;
 
-        protected List<Corral> edgeCorrals;
-        protected List<Corral> normalCorrals;
+        protected List<(Corral corral, List<(int, int)> path)> corralsEnv;
         protected List<(Kid kid, List<(int, int)> path)> kidsEnv;
         protected List<(Dirt dirt, List<(int, int)> path)> dirtEnv;
 
@@ -38,30 +37,6 @@ namespace Agentes
             LastPosX = -1;
             LastPosY = -1;
             circles = false;
-
-            //Saving The Corrals Locations
-            var newCorrals = new List<(bool xEdge, bool yEdge, Corral corral)>();
-
-            for (int i = 0; i < env.GetLength(0); i++)
-                for (int j = 0; j < env.GetLength(1); j++)
-                {
-                    if (env[i, j] != null && env[i, j].HasCorral)
-                    {
-                        var xEdge = i == 0 || i == env.GetLength(0) - 1;
-                        xEdge = xEdge || (env[i - 1, j] != null && env[i - 1, j].HasObstacle);
-                        xEdge = xEdge || (env[i + 1, j] != null && env[i + 1, j].HasObstacle);
-                        var yEdge = j == 0 || j == env.GetLength(1) - 1;
-                        yEdge = yEdge || (env[i, j - 1] != null && env[i, j - 1].HasObstacle);
-                        yEdge = yEdge || (env[i, j + 1] != null && env[i, j + 1].HasObstacle);
-                        newCorrals.Add((xEdge, yEdge, env[i, j].Corral));
-                    }
-                }
-
-            var firstEdge = newCorrals.FindAll(e => e.xEdge && e.yEdge);
-            var secondEdge = newCorrals.FindAll(e => e.xEdge || e.yEdge);
-            var normalOnes = newCorrals.FindAll(e => !e.xEdge && !e.yEdge);
-            edgeCorrals = new List<Corral>(firstEdge.Concat(secondEdge).Select(e => e.corral));
-            normalCorrals = new List<Corral>(normalOnes.Select(e => e.corral));
         }
 
         public (RobotAction action, (int x, int y)[] pos) Action(Cell[,] env)
@@ -75,9 +50,9 @@ namespace Agentes
 
         protected void See(Cell[,] env)
         {
-            var newCorrals = new List<(bool xEdge, bool yEdge, Corral corral)>();
             kidsEnv = new List<(Kid, List<(int, int)>)>();
             dirtEnv = new List<(Dirt, List<(int, int)>)>();
+            var newCorrals = new List<(Corral corral, int edge, List<(int, int)> path)>();
 
             for (int x = 0; x < env.GetLength(0); x++)
                 for (int y = 0; y < env.GetLength(1); y++)
@@ -97,17 +72,17 @@ namespace Agentes
                     }
                     if (env[x, y].HasCorral && !env[x, y].Corral.HasKid)
                     {
-                        var xEdge = x == 0 || x == env.GetLength(0) - 1;
-                        xEdge = xEdge || (env[x - 1, y] != null && env[x - 1, y].HasObstacle);
-                        xEdge = xEdge || (env[x + 1, y] != null && env[x + 1, y].HasObstacle);
-                        xEdge = xEdge || (env[x - 1, y] != null && env[x - 1, y].HasCorral);
-                        xEdge = xEdge || (env[x + 1, y] != null && env[x + 1, y].HasCorral);
-                        var yEdge = y == 0 || y == env.GetLength(1) - 1;
-                        yEdge = yEdge || (env[x, y - 1] != null && env[x, y - 1].HasObstacle);
-                        yEdge = yEdge || (env[x, y + 1] != null && env[x, y + 1].HasObstacle);
-                        yEdge = yEdge || (env[x, y - 1] != null && env[x, y - 1].HasCorral);
-                        yEdge = yEdge || (env[x, y + 1] != null && env[x, y + 1].HasCorral);
-                        newCorrals.Add((xEdge, yEdge, env[x, y].Corral));
+                        var corral = env[x, y].Corral;
+                        var (exist, path) = Path(corral.PosX, corral.PosY, env);
+                        if (exist)
+                        {
+                            var edge = 0;
+                            if (x == 0 || (env[x - 1, y] != null && (env[x - 1, y].HasObstacle || env[x - 1, y].HasCorralWithKid))) edge++;
+                            if (x == env.GetLength(0) - 1 || (env[x + 1, y] != null && (env[x + 1, y].HasObstacle || env[x + 1, y].HasCorralWithKid))) edge++;
+                            if (y == 0 || (env[x, y - 1] != null && (env[x, y - 1].HasObstacle || env[x, y - 1].HasCorralWithKid))) edge++;
+                            if (y == env.GetLength(1) - 1 || (env[x, y + 1] != null && (env[x, y + 1].HasObstacle || env[x, y + 1].HasCorralWithKid))) edge++;
+                            newCorrals.Add((env[x, y].Corral, edge, path));
+                        }
                     }
                 }
 
@@ -115,11 +90,16 @@ namespace Agentes
             dirtEnv.Sort((e1, e2) => e1.path.Count.CompareTo(e2.path.Count));
 
             //Corrals
-            var firstEdge = newCorrals.FindAll(e => e.xEdge && e.yEdge);
-            var secondEdge = newCorrals.FindAll(e => e.xEdge || e.yEdge);
-            var normalOnes = newCorrals.FindAll(e => !e.xEdge && !e.yEdge);
-            edgeCorrals = new List<Corral>(firstEdge.Concat(secondEdge).Select(e => e.corral));
-            normalCorrals = new List<Corral>(normalOnes.Select(e => e.corral));
+            var oneEdge = newCorrals.FindAll(e => e.edge >= 3);
+            oneEdge.Sort((e1, e2) => e1.path.Count.CompareTo(e2.path.Count));
+            var twoEdge = newCorrals.FindAll(e => e.edge == 2);
+            twoEdge.Sort((e1, e2) => e1.path.Count.CompareTo(e2.path.Count));
+            var threeEdge = newCorrals.FindAll(e => e.edge == 1);
+            threeEdge.Sort((e1, e2) => e1.path.Count.CompareTo(e2.path.Count));
+            var fourEdge = newCorrals.FindAll(e => e.edge == 0);
+            fourEdge.Sort((e1, e2) => e1.path.Count.CompareTo(e2.path.Count));
+
+            corralsEnv = oneEdge.Concat(twoEdge).Concat(threeEdge).Concat(fourEdge).Select(e => (e.corral, e.path)).ToList(); 
         }
 
         public void Move(int x, int y)
@@ -150,10 +130,10 @@ namespace Agentes
         public Kid DepositKid(Cell[,] env)
         {
             if (!HasKid) throw new Exception("The Robot doesn't have a kid");
-            if (!env[PosX, PosY].HasCorral || env[PosX, PosY].Corral.HasKid) throw new Exception("Incorrect Delivery of Kid");
+            //if (!env[PosX, PosY].HasCorral || env[PosX, PosY].Corral.HasKid) throw new Exception("Incorrect Delivery of Kid");
 
             //Updating the Corrals without Kids
-            var corral = edgeCorrals.Count > 0 ? edgeCorrals[0] : normalCorrals[0];
+            var corral = corralsEnv[0].corral;
             if (env[PosX, PosY].Corral != corral) throw new Exception("Delivering to the Wrong Corral");
 
             var result = Kid;

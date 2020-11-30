@@ -34,7 +34,7 @@ namespace Agentes
             }
 
             //Update the Goals of the Robot
-            ReviewGoal(env);
+            ReviewGoal();
             if (goal == RobotGoal.Nothing) return (RobotAction.NothingToDo, new (int, int)[] { });
 
             //Robot has a Kid
@@ -136,6 +136,20 @@ namespace Agentes
             }
             else //goal == Clean
             {
+                //if (HasKid)
+                //{
+                //    if (goalPath.Count <= 2) return (RobotAction.Move, goalPath.ToArray());
+                //    var dirtMoveDouble = goalPath.Take(2).ToArray();
+                //    goalPath.RemoveAt(0);
+                //    goalPath.RemoveAt(0);
+
+                //    actionGoal = RobotGoal.Clean;
+                //    actionGoalX = goalX;
+                //    actionGoalY = goalY;
+                //    actgoalPath = goalPath;
+                //    return (RobotAction.Move, dirtMoveDouble);
+                //}
+
                 if (goalPath.Count == 1) return (RobotAction.Move, goalPath.ToArray());
                 var dirtMove = goalPath.Take(1).ToArray();
                 goalPath.RemoveAt(0);
@@ -148,28 +162,16 @@ namespace Agentes
             }
         }
 
-        protected void ReviewGoal(Cell[,] env)
+        protected void ReviewGoal()
         {
-            if (HasKid)
+            if (HasKid && corralsEnv.Count > 0)
             {
-                var corral = edgeCorrals.Count > 0 ? edgeCorrals[0] : normalCorrals[0];
-                var (exist, path) = Path(corral.PosX, corral.PosY, env);
-                if (exist)
-                {
-                    goal = RobotGoal.LeaveKid;
-                    goalX = corral.PosX;
-                    goalY = corral.PosY;
-                    goalPath = path;
-                }
-                else
-                {
-                    goal = RobotGoal.Nothing;
-                    goalX = -1;
-                    goalY = -1;
-                    goalPath = null;
-                }
+                goal = RobotGoal.LeaveKid;
+                goalX = corralsEnv[0].corral.PosX;
+                goalY = corralsEnv[0].corral.PosY;
+                goalPath = corralsEnv[0].path;
             }
-            else if (kidsEnv.Count > 0)
+            else if (!HasKid && kidsEnv.Count > 0)
             {
                 goal = RobotGoal.Kidnap;
                 goalX = kidsEnv[0].kid.PosX;

@@ -12,9 +12,9 @@ namespace Agentes
 
         protected override (RobotAction action, (int x, int y)[] pos) SelectAction(Cell[,] env)
         {
-            if (HasKid)
+            if (HasKid && corralsEnv.Count > 0)
             {
-                var corral = edgeCorrals.Count > 0 ? edgeCorrals[0] : normalCorrals[0];
+                var (corral, path) = corralsEnv[0];
 
                 if (actionGoal == RobotGoal.LeaveKid && actionGoalX == corral.PosX && actionGoalY == corral.PosY)
                 {
@@ -28,27 +28,17 @@ namespace Agentes
                 actionGoal = RobotGoal.LeaveKid;
                 actionGoalX = corral.PosX;
                 actionGoalY = corral.PosY;
-                var (exist, path) = Path(corral.PosX, corral.PosY, env);
 
-                if (exist)
-                {
-                    if (path.Count <= 2) return (RobotAction.Move_Leave, path.ToArray());
-                    var move = path.Take(2).ToArray();
-                    path.RemoveAt(0);
-                    path.RemoveAt(0);
-                    actgoalPath = path;
-                    return (RobotAction.Move, move);
-                }
-                else
-                {
-                    actionGoal = RobotGoal.Nothing;
-                    actionGoalX = -1;
-                    actionGoalY = -1;
-                    actgoalPath = null;
-                    return (RobotAction.NothingToDo, new (int x, int y)[] { });
-                }
+                if (path.Count <= 2) return (RobotAction.Move_Leave, path.ToArray());
+
+                var move = path.Take(2).ToArray();
+                path.RemoveAt(0);
+                path.RemoveAt(0);
+                actgoalPath = path;
+                return (RobotAction.Move, move);
+
             }
-            else if (kidsEnv.Count > 0)
+            else if (!HasKid && kidsEnv.Count > 0)
             {
                 var (kid, path) = kidsEnv[0];
 
